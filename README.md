@@ -10,14 +10,18 @@ Usage
 
 Typical usage:
 
-    sp = SerialPort.new("/dev/ttys001", 115200).open
-    sp.write "start"
-    puts sp.read(100)
-    sp.close
+```ruby
+sp = SerialPort.new("/dev/ttys001", 115200).open
+sp.write "start"
+puts sp.read(100)
+sp.close
+```
 
 Block interface is also available:
 
-    SerialPort.new("/dev/ttys001", 115200) do |sp|
-      sp.write "start"
-      puts sp.read(100)
-    end # also closes the port
+```ruby
+SerialPort.new("/dev/ttys001", 115200) do |sp|
+  sp.write "start"
+  puts sp.read(100)
+end # also closes the port
+```
