@@ -113,7 +113,7 @@ mrb_value mrb_serialport_close(mrb_state *mrb, mrb_value self) {
   }
 }
 
-mrb_value mrb_serialport_write(mrb_state *mrb, mrb_value self) {
+mrb_value mrb_serialport_p_write(mrb_state *mrb, mrb_value self) {
   mrb_value r_string;
   char *string;
   size_t l = 0;
@@ -172,7 +172,7 @@ void mrb_mruby_serialport_gem_init(mrb_state *mrb) {
                     MRB_ARGS_NONE());
   mrb_define_method(mrb, serialport_class, "close", mrb_serialport_close,
                     MRB_ARGS_NONE());
-  mrb_define_method(mrb, serialport_class, "write", mrb_serialport_write,
+  mrb_define_method(mrb, serialport_class, "_write", mrb_serialport_p_write,
                     MRB_ARGS_REQ(1));
   mrb_define_method(mrb, serialport_class, "_read", mrb_serialport_p_read,
                     MRB_ARGS_REQ(1));

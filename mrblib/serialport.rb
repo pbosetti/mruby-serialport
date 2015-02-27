@@ -78,6 +78,10 @@ class SerialPort
     self._read(buf_len)
   end
   
+  def write(str)
+    self._write(str.to_s)
+  end
+  
   def operate(&block)
     self.open if @fd < 0
     yield self
