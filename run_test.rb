@@ -12,5 +12,5 @@ end
 MRuby::Build.new do |conf|
   toolchain :clang
   conf.gembox 'default'
-  conf.gem :github => 'pbosetti/mruby-serialport', :branch => 'master'
+  conf.gem File.dirname(__FILE__)
 end
