@@ -1,4 +1,4 @@
-SerialPort
+SerialPort [![Build Status](https://travis-ci.org/pbosetti/mruby-serialport.svg?branch=master)](https://travis-ci.org/pbosetti/mruby-serialport)
 ==========
 
 Experimental SerialPort communication for mruby.
