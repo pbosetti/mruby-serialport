@@ -72,6 +72,10 @@ enum error_src set_blocking(int fd, int should_block) {
     return 0;
 }
 
+static void update_error(mrb_state *mrb, mrb_value self) {
+  IV_SET("@error", mrb_str_new_cstr(mrb, strerror(errno)));
+}
+
 mrb_value mrb_serialport_open(mrb_state *mrb, mrb_value self) {
   int fd;
   mrb_value mrb_portname = IV_GET("@port_name");
@@ -83,15 +87,15 @@ mrb_value mrb_serialport_open(mrb_state *mrb, mrb_value self) {
 
   fd = open(portname, O_RDWR | O_NOCTTY | O_SYNC);
   if (fd < 0) {
-    IV_SET("@error", mrb_str_new_cstr(mrb, strerror(errno)));
+    update_error(mrb, self);
     mrb_raise(mrb, E_RUNTIME_ERROR, strerror(errno));
   }
   if (!isatty(fd)) {
-    IV_SET("@error", mrb_str_new_cstr(mrb, strerror(errno)));
+    update_error(mrb, self);
     mrb_raise(mrb, E_RUNTIME_ERROR, strerror(errno));
   }
   if (set_interface_attribs(fd, baud, 0)) {
-    IV_SET("@error", mrb_str_new_cstr(mrb, strerror(errno)));
+    update_error(mrb, self);
     mrb_raise(mrb, E_RUNTIME_ERROR, strerror(errno));
   }
   if (set_blocking(fd, mrb_bool(mrb_blocking) ? 1 : 0) != 0) {
@@ -169,7 +173,7 @@ mrb_value mrb_serialport_flush(mrb_state *mrb, mrb_value self) {
   int fd = mrb_fixnum(IV_GET("@fd"));
   if (fd >= 0) {
     if (tcflush(fd, TCIOFLUSH) != 0) {
-      IV_SET("@error", mrb_str_new_cstr(mrb, strerror(errno)));
+      update_error(mrb, self);
       mrb_raise(mrb, E_RUNTIME_ERROR, strerror(errno));
     }
   }
@@ -179,18 +183,12 @@ mrb_value mrb_serialport_flush(mrb_state *mrb, mrb_value self) {
 void mrb_mruby_serialport_gem_init(mrb_state *mrb) {
   struct RClass *serialport_class;
   serialport_class = mrb_define_class(mrb, "SerialPort", mrb->object_class);
-  mrb_define_method(mrb, serialport_class, "open", mrb_serialport_open,
-                    MRB_ARGS_NONE());
-  mrb_define_method(mrb, serialport_class, "close", mrb_serialport_close,
-                    MRB_ARGS_NONE());
-  mrb_define_method(mrb, serialport_class, "_write", mrb_serialport_p_write,
-                    MRB_ARGS_REQ(1));
-  mrb_define_method(mrb, serialport_class, "_read", mrb_serialport_p_read,
-                    MRB_ARGS_REQ(1));
-  mrb_define_method(mrb, serialport_class, "read_char",
-                    mrb_serialport_read_char, MRB_ARGS_NONE());
-  mrb_define_method(mrb, serialport_class, "flush", mrb_serialport_flush,
-                    MRB_ARGS_NONE());
+  mrb_define_method(mrb, serialport_class, "open", mrb_serialport_open, MRB_ARGS_NONE());
+  mrb_define_method(mrb, serialport_class, "close", mrb_serialport_close, MRB_ARGS_NONE());
+  mrb_define_method(mrb, serialport_class, "_write", mrb_serialport_p_write, MRB_ARGS_REQ(1));
+  mrb_define_method(mrb, serialport_class, "_read", mrb_serialport_p_read, MRB_ARGS_REQ(1));
+  mrb_define_method(mrb, serialport_class, "read_char", mrb_serialport_read_char, MRB_ARGS_NONE());
+  mrb_define_method(mrb, serialport_class, "flush", mrb_serialport_flush, MRB_ARGS_NONE());
 }
 
 void mrb_mruby_serialport_gem_final(mrb_state *mrb) {}
