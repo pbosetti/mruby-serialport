@@ -39,7 +39,7 @@ class SerialPort
   attr_reader :port_name, :baud
   attr_accessor :blocking, :buffer_size
   
-  def initialize(port, baud, blocking=true, &block)
+  def initialize(port, baud=9600, blocking=true, &block)
     self.port_name = port
     self.baud      = baud
     @blocking      = blocking

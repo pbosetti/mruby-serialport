@@ -165,6 +165,17 @@ mrb_value mrb_serialport_read_char(mrb_state *mrb, mrb_value self) {
   }
 }
 
+mrb_value mrb_serialport_flush(mrb_state *mrb, mrb_value self) {
+  int fd = mrb_fixnum(IV_GET("@fd"));
+  if (fd >= 0) {
+    if (tcflush(fd, TCIOFLUSH) != 0) {
+      perror("System error");
+      mrb_raise(mrb, E_RUNTIME_ERROR, "Could not flush port!");
+    }
+  }
+  return mrb_nil_value();
+}
+
 void mrb_mruby_serialport_gem_init(mrb_state *mrb) {
   struct RClass *serialport_class;
   serialport_class = mrb_define_class(mrb, "SerialPort", mrb->object_class);
@@ -178,6 +189,8 @@ void mrb_mruby_serialport_gem_init(mrb_state *mrb) {
                     MRB_ARGS_REQ(1));
   mrb_define_method(mrb, serialport_class, "read_char",
                     mrb_serialport_read_char, MRB_ARGS_NONE());
+  mrb_define_method(mrb, serialport_class, "flush", mrb_serialport_flush,
+                    MRB_ARGS_NONE());
 }
 
 void mrb_mruby_serialport_gem_final(mrb_state *mrb) {}
