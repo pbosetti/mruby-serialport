@@ -78,6 +78,17 @@ class SerialPort
     self._read(buf_len)
   end
   
+  def readline(sep="\n")
+    line = ""
+    rng = (-sep.length)..(-1)
+    loop do
+      c = self.read_char
+      line << c
+      break if line[rng] == sep
+    end
+    return line
+  end
+  
   def write(str)
     self._write(str.to_s)
   end
