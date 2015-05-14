@@ -83,16 +83,16 @@ mrb_value mrb_serialport_open(mrb_state *mrb, mrb_value self) {
 
   fd = open(portname, O_RDWR | O_NOCTTY | O_SYNC);
   if (fd < 0) {
-    IV_SET("@error", mrb_fixnum_value(errno));
-    mrb_raise(mrb, E_RUNTIME_ERROR, "Could not open port");
+    IV_SET("@error", mrb_str_new_cstr(mrb, strerror(errno)));
+    mrb_raise(mrb, E_RUNTIME_ERROR, strerror(errno));
   }
   if (!isatty(fd)) {
-    IV_SET("@error", mrb_fixnum_value(errno));
-    mrb_raise(mrb, E_RUNTIME_ERROR, "Selected addres is not a tty");
+    IV_SET("@error", mrb_str_new_cstr(mrb, strerror(errno)));
+    mrb_raise(mrb, E_RUNTIME_ERROR, strerror(errno));
   }
   if (set_interface_attribs(fd, baud, 0)) {
-    IV_SET("@error", mrb_str_new_cstr(mrb, "Could not set attibutes"));
-    mrb_raise(mrb, E_RUNTIME_ERROR, "Could not set attibutes");
+    IV_SET("@error", mrb_str_new_cstr(mrb, strerror(errno)));
+    mrb_raise(mrb, E_RUNTIME_ERROR, strerror(errno));
   }
   if (set_blocking(fd, mrb_bool(mrb_blocking) ? 1 : 0) != 0) {
     IV_SET("@error", mrb_str_new_cstr(mrb, "Could not set blocking behavior"));
@@ -169,8 +169,8 @@ mrb_value mrb_serialport_flush(mrb_state *mrb, mrb_value self) {
   int fd = mrb_fixnum(IV_GET("@fd"));
   if (fd >= 0) {
     if (tcflush(fd, TCIOFLUSH) != 0) {
-      perror("System error");
-      mrb_raise(mrb, E_RUNTIME_ERROR, "Could not flush port!");
+      IV_SET("@error", mrb_str_new_cstr(mrb, strerror(errno)));
+      mrb_raise(mrb, E_RUNTIME_ERROR, strerror(errno));
     }
   }
   return mrb_nil_value();
