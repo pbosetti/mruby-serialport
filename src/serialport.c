@@ -109,13 +109,12 @@ mrb_value mrb_serialport_open(mrb_state *mrb, mrb_value self) {
 
 mrb_value mrb_serialport_close(mrb_state *mrb, mrb_value self) {
   int fd = mrb_fixnum(IV_GET("@fd"));
-  if (fd >= 0) {
-    close(fd);
+  if (close(fd) == 0) {
     IV_SET("@fd", mrb_fixnum_value(-1));
     return mrb_true_value();
-  } else {
-    return mrb_false_value();
   }
+  update_error(mrb, self);
+  return mrb_false_value();
 }
 
 mrb_value mrb_serialport_p_write(mrb_state *mrb, mrb_value self) {
@@ -126,11 +125,11 @@ mrb_value mrb_serialport_p_write(mrb_state *mrb, mrb_value self) {
   
   mrb_get_args(mrb, "s", &string, &l);
   res = write(fd, (char *)string, l);
-  if (res >= 0) {
-    return mrb_fixnum_value(l);    
+  if (res < 0) {
+    update_error(mrb, self);
+    mrb_raise(mrb, E_RUNTIME_ERROR, strerror(errno));
   }
-  update_error(mrb, self);
-  mrb_raise(mrb, E_RUNTIME_ERROR, strerror(errno));
+  return mrb_fixnum_value(l);    
 }
 
 mrb_value mrb_serialport_test_write(mrb_state *mrb, mrb_value self) {
@@ -142,17 +141,17 @@ mrb_value mrb_serialport_test_write(mrb_state *mrb, mrb_value self) {
   mrb_get_args(mrb, "s", &string, &l);
   res = write(fd, (char *)string, l);
   printf("wrote '%s'", string);
-  if (res >= 0) {
-    return mrb_fixnum_value(l);    
+  if (res < 0) {
+    update_error(mrb, self);
+    mrb_raise(mrb, E_RUNTIME_ERROR, strerror(errno));
   }
-  update_error(mrb, self);
-  mrb_raise(mrb, E_RUNTIME_ERROR, strerror(errno));
+  return mrb_fixnum_value(l);    
 }
 
 
 mrb_value mrb_serialport_p_read(mrb_state *mrb, mrb_value self) {
   mrb_value r_buffer_size, r_result;
-  size_t buf_len;
+  ssize_t buf_len;
   char *string = NULL;
   int fd = mrb_fixnum(IV_GET("@fd"));
 
@@ -166,15 +165,16 @@ mrb_value mrb_serialport_p_read(mrb_state *mrb, mrb_value self) {
   }
   bzero(string, buf_len);
   buf_len = read(fd, string, buf_len * sizeof(char));
-  if ( buf_len > 0 ) {
-    r_result = mrb_str_new_cstr(mrb, string);
-    free(string);
-    return r_result;
-  } else if ( buf_len == 0 ) {
+  if ( buf_len < 0 ) {
+    update_error(mrb, self);
+    mrb_raise(mrb, E_RUNTIME_ERROR, strerror(errno));
+  } 
+  else if ( buf_len == 0 ) {
     return mrb_nil_value();
   } 
-  update_error(mrb, self);
-  mrb_raise(mrb, E_RUNTIME_ERROR, strerror(errno));
+  r_result = mrb_str_new_cstr(mrb, string);
+  free(string);
+  return r_result;
 }
 
 mrb_value mrb_serialport_read_char(mrb_state *mrb, mrb_value self) {
@@ -182,33 +182,33 @@ mrb_value mrb_serialport_read_char(mrb_state *mrb, mrb_value self) {
   ssize_t len = 0;
   int fd = mrb_fixnum(IV_GET("@fd"));
   len = read(fd, ch, sizeof(char));
-  if ( len > 0 ) {
-    return mrb_str_new_cstr(mrb, ch);
-  } else if ( len == 0 ) {
+  if ( len < 0 ) {
+    update_error(mrb, self);
+    mrb_raise(mrb, E_RUNTIME_ERROR, strerror(errno));
+  } 
+  else if ( len == 0 ) {
     return mrb_nil_value();
   } 
-  update_error(mrb, self);
-  mrb_raise(mrb, E_RUNTIME_ERROR, strerror(errno));
+  return mrb_str_new_cstr(mrb, ch);
 }
 
 mrb_value mrb_serialport_flush(mrb_state *mrb, mrb_value self) {
   int fd = mrb_fixnum(IV_GET("@fd"));
-  if (fd >= 0) {
-    if (tcflush(fd, TCIOFLUSH) != 0) {
-      update_error(mrb, self);
-      mrb_raise(mrb, E_RUNTIME_ERROR, strerror(errno));
-    }
+  if (tcflush(fd, TCIOFLUSH) != 0) {
+    update_error(mrb, self);
+    mrb_raise(mrb, E_RUNTIME_ERROR, strerror(errno));
   }
-  return mrb_nil_value();
+  return mrb_true_value();
 }
 
 mrb_value mrb_serialport_available(mrb_state *mrb, mrb_value self) {
   int fd = mrb_fixnum(IV_GET("@fd"));
   int bytes_available;
-  if (ioctl(fd, FIONREAD, &bytes_available) == 0) 
-    return mrb_fixnum_value(bytes_available);
-  update_error(mrb, self);
-  mrb_raise(mrb, E_RUNTIME_ERROR, strerror(errno));
+  if (ioctl(fd, FIONREAD, &bytes_available) != 0) {
+    update_error(mrb, self);
+    mrb_raise(mrb, E_RUNTIME_ERROR, strerror(errno));
+  } 
+  return mrb_fixnum_value(bytes_available);
 }
 
 void mrb_mruby_serialport_gem_init(mrb_state *mrb) {

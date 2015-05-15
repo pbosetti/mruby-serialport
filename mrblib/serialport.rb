@@ -93,7 +93,7 @@ class SerialPort
   # end
   
   def read_lines(buf_len = @buffer_size)
-    self.read(buf_len).split(@terminator)
+    (self.read(buf_len) || '').split(@terminator)
   end
   
   def write(str)
