@@ -133,6 +133,21 @@ mrb_value mrb_serialport_p_write(mrb_state *mrb, mrb_value self) {
   mrb_raise(mrb, E_RUNTIME_ERROR, strerror(errno));
 }
 
+mrb_value mrb_serialport_test_write(mrb_state *mrb, mrb_value self) {
+  const char *string = "SerialPort";
+  size_t l = 0;
+  ssize_t res = 0;
+  int fd = mrb_fixnum(IV_GET("@fd"));
+  
+  res = write(fd, (char *)string, strlen(string));
+  if (res >= 0) {
+    return mrb_fixnum_value(l);    
+  }
+  update_error(mrb, self);
+  mrb_raise(mrb, E_RUNTIME_ERROR, strerror(errno));
+}
+
+
 mrb_value mrb_serialport_p_read(mrb_state *mrb, mrb_value self) {
   mrb_value r_buffer_size, r_result;
   size_t buf_len;
@@ -204,6 +219,7 @@ void mrb_mruby_serialport_gem_init(mrb_state *mrb) {
   mrb_define_method(mrb, serialport_class, "read_char", mrb_serialport_read_char, MRB_ARGS_NONE());
   mrb_define_method(mrb, serialport_class, "flush", mrb_serialport_flush, MRB_ARGS_NONE());
   mrb_define_method(mrb, serialport_class, "available", mrb_serialport_available, MRB_ARGS_NONE());
+  mrb_define_method(mrb, serialport_class, "test_write", mrb_serialport_test_write, MRB_ARGS_NONE());
 }
 
 void mrb_mruby_serialport_gem_final(mrb_state *mrb) {}
