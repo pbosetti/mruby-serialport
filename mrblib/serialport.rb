@@ -37,15 +37,16 @@ class SerialPort
   RATES = [2400, 4800, 9600, 19200, 38400, 57600, 115200]
   
   attr_reader :port_name, :baud
-  attr_accessor :blocking, :buffer_size
+  attr_accessor :blocking, :buffer_size, :terminator
   
-  def initialize(port, baud=9600, blocking=true, &block)
+  def initialize(port, baud=9600, blocking=false, &block)
     self.port_name = port
     self.baud      = baud
     @blocking      = blocking
     @error         = nil
     @fd            = -1
     @buffer_size   = 1024
+    @terminator    = "\r\n"
     if block_given? then
       self.operate &block
     end
@@ -71,22 +72,28 @@ class SerialPort
   end
   
   def puts(string)
-    self.write(string.to_s + "\n")
+    self.write(string.to_s + @terminator)
   end
   
   def read(buf_len = @buffer_size)
     self._read(buf_len)
   end
+
+  # Not Working (to be investigated)
+  # def readline(sep=@terminator)
+  #   line = ""
+  #   rng = (-sep.length)..(-1)
+  #   loop do
+  #     c = self.read_char
+  #     break unless c
+  #     line << c
+  #     break if line[rng] == sep
+  #   end
+  #   return line
+  # end
   
-  def readline(sep="\n")
-    line = ""
-    rng = (-sep.length)..(-1)
-    loop do
-      c = self.read_char
-      line << c
-      break if line[rng] == sep
-    end
-    return line
+  def read_lines(buf_len = @buffer_size)
+    self.read(buf_len).split(@terminator)
   end
   
   def write(str)

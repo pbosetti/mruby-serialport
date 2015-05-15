@@ -16,6 +16,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <fcntl.h>
+#include <sys/ioctl.h>
 
 #define IV_GET(name) mrb_iv_get(mrb, self, mrb_intern_cstr(mrb, (name)))
 #define IV_SET(name, value)                                                    \
@@ -139,34 +140,39 @@ mrb_value mrb_serialport_p_read(mrb_state *mrb, mrb_value self) {
   char *string = NULL;
   int fd = mrb_fixnum(IV_GET("@fd"));
 
-  if (fd >= 0) {
-    mrb_get_args(mrb, "i", &r_buffer_size);
-    buf_len = mrb_fixnum(r_buffer_size);
-    string = (char *)realloc(string, buf_len * sizeof(char));
-    if (!string) {
-      free(string);
-      string = NULL;
-      mrb_raise(mrb, E_RUNTIME_ERROR, "Could not allocate memory");
-    }
-    bzero(string, buf_len);
-    buf_len = read(fd, string, buf_len * sizeof(char));
+  mrb_get_args(mrb, "i", &r_buffer_size);
+  buf_len = mrb_fixnum(r_buffer_size);
+  string = (char *)realloc(string, buf_len * sizeof(char));
+  if (!string) {
+    free(string);
+    string = NULL;
+    mrb_raise(mrb, E_RUNTIME_ERROR, "Could not allocate memory");
+  }
+  bzero(string, buf_len);
+  buf_len = read(fd, string, buf_len * sizeof(char));
+  if ( buf_len > 0 ) {
     r_result = mrb_str_new_cstr(mrb, string);
     free(string);
     return r_result;
-  } else {
+  } else if ( buf_len == 0 ) {
     return mrb_nil_value();
-  }
+  } 
+  update_error(mrb, self);
+  mrb_raise(mrb, E_RUNTIME_ERROR, strerror(errno));
 }
 
 mrb_value mrb_serialport_read_char(mrb_state *mrb, mrb_value self) {
   char ch[1];
+  ssize_t len = 0;
   int fd = mrb_fixnum(IV_GET("@fd"));
-  if (fd >= 0) {
-    read(fd, ch, sizeof(char));
+  len = read(fd, ch, sizeof(char));
+  if ( len > 0 ) {
     return mrb_str_new_cstr(mrb, ch);
-  } else {
+  } else if ( len == 0 ) {
     return mrb_nil_value();
-  }
+  } 
+  update_error(mrb, self);
+  mrb_raise(mrb, E_RUNTIME_ERROR, strerror(errno));
 }
 
 mrb_value mrb_serialport_flush(mrb_state *mrb, mrb_value self) {
@@ -180,6 +186,15 @@ mrb_value mrb_serialport_flush(mrb_state *mrb, mrb_value self) {
   return mrb_nil_value();
 }
 
+mrb_value mrb_serialport_available(mrb_state *mrb, mrb_value self) {
+  int fd = mrb_fixnum(IV_GET("@fd"));
+  int bytes_available;
+  if (ioctl(fd, FIONREAD, &bytes_available) == 0) 
+    return mrb_fixnum_value(bytes_available);
+  update_error(mrb, self);
+  mrb_raise(mrb, E_RUNTIME_ERROR, strerror(errno));
+}
+
 void mrb_mruby_serialport_gem_init(mrb_state *mrb) {
   struct RClass *serialport_class;
   serialport_class = mrb_define_class(mrb, "SerialPort", mrb->object_class);
@@ -189,6 +204,7 @@ void mrb_mruby_serialport_gem_init(mrb_state *mrb) {
   mrb_define_method(mrb, serialport_class, "_read", mrb_serialport_p_read, MRB_ARGS_REQ(1));
   mrb_define_method(mrb, serialport_class, "read_char", mrb_serialport_read_char, MRB_ARGS_NONE());
   mrb_define_method(mrb, serialport_class, "flush", mrb_serialport_flush, MRB_ARGS_NONE());
+  mrb_define_method(mrb, serialport_class, "available", mrb_serialport_available, MRB_ARGS_NONE());
 }
 
 void mrb_mruby_serialport_gem_final(mrb_state *mrb) {}

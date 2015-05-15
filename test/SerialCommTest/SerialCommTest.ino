@@ -11,8 +11,17 @@ void setup() {
 }
 
 void loop() {
-  Serial.print("Time: ");
-  Serial.print(millis());
-  Serial.print("\n");
+  static int lvl = LOW;
+  char c;
+  if (Serial.available() > 0) {
+    digitalWrite(13, lvl);
+    lvl = !lvl;
+    c = Serial.read();
+    Serial.print("-> ");
+    Serial.println(c);
+    Serial.print("Time: ");
+    Serial.println(millis());
+    //Serial1.print("\n");
+  }
   delay(1000);
 }
