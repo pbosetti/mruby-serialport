@@ -119,19 +119,18 @@ mrb_value mrb_serialport_close(mrb_state *mrb, mrb_value self) {
 }
 
 mrb_value mrb_serialport_p_write(mrb_state *mrb, mrb_value self) {
-  mrb_value r_string;
   char *string;
   size_t l = 0;
+  ssize_t res = 0;
   int fd = mrb_fixnum(IV_GET("@fd"));
-
-  if (fd >= 0) {
-    mrb_get_args(mrb, "S", &r_string);
-    string = mrb_str_to_cstr(mrb, r_string);
-    l = write(fd, string, strlen(string));
-    return mrb_fixnum_value(l);
-  } else {
-    return mrb_nil_value();
+  
+  mrb_get_args(mrb, "s", &string, &l);
+  res = write(fd, (char *)string, l);
+  if (res >= 0) {
+    return mrb_fixnum_value(l);    
   }
+  update_error(mrb, self);
+  mrb_raise(mrb, E_RUNTIME_ERROR, strerror(errno));
 }
 
 mrb_value mrb_serialport_p_read(mrb_state *mrb, mrb_value self) {
