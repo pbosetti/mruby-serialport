@@ -227,7 +227,7 @@ mrb_value mrb_toggle_dtr(mrb_state *mrb, mrb_value self) {
 #elif defined(TIOCM_DTR)
     int iFlags;
     iFlags = TIOCM_DTR;
-    res = ioctl(fd, TIOCMBIs, &iFlags);
+    res = ioctl(fd, TIOCMBIC, &iFlags);
 #else
 #error Dunno how to manage DTR
 #endif
