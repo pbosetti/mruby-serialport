@@ -36,7 +36,7 @@ enum error_src set_interface_attribs(int fd, int speed, int parity) {
   tty.c_cflag = (tty.c_cflag & ~CSIZE) | CS8; // 8-bit chars
   // disable IGNBRK for mismatched speed tests; otherwise receive break
   // as \000 chars
-  tty.c_iflag &= ~IGNBRK; // ignore break signal
+  tty.c_iflag = IGNBRK | IGNCR;   // ignore break signal
   tty.c_lflag = 0;        // no signaling chars, no echo,
                           // no canonical processing
   tty.c_oflag = 0;        // no remapping, no delays
@@ -75,6 +75,7 @@ enum error_src set_blocking(int fd, int should_block) {
 
 static void update_error(mrb_state *mrb, mrb_value self) {
   IV_SET("@error", mrb_str_new_cstr(mrb, strerror(errno)));
+  IV_SET("@errno", mrb_fixnum_value(errno));
 }
 
 mrb_value mrb_serialport_open(mrb_state *mrb, mrb_value self) {
@@ -165,12 +166,14 @@ mrb_value mrb_serialport_p_read(mrb_state *mrb, mrb_value self) {
   }
   bzero(string, buf_len);
   buf_len = read(fd, string, buf_len * sizeof(char));
-  if ( buf_len < 0 ) {
+  if ( buf_len == 0 ) {
+    return mrb_nil_value();
+  } 
+  else if ( buf_len < 0 ) {
+    if ( errno == EAGAIN )
+      return mrb_nil_value();
     update_error(mrb, self);
     mrb_raise(mrb, E_RUNTIME_ERROR, strerror(errno));
-  } 
-  else if ( buf_len == 0 ) {
-    return mrb_nil_value();
   } 
   r_result = mrb_str_new_cstr(mrb, string);
   free(string);
@@ -182,12 +185,14 @@ mrb_value mrb_serialport_read_char(mrb_state *mrb, mrb_value self) {
   ssize_t len = 0;
   int fd = mrb_fixnum(IV_GET("@fd"));
   len = read(fd, ch, sizeof(char));
-  if ( len < 0 ) {
+  if ( len == 0 ) {
+      return mrb_nil_value();
+  } 
+  else if ( len < 0 ) {
+    if ( errno == EAGAIN )
+      return mrb_nil_value();
     update_error(mrb, self);
     mrb_raise(mrb, E_RUNTIME_ERROR, strerror(errno));
-  } 
-  else if ( len == 0 ) {
-    return mrb_nil_value();
   } 
   return mrb_str_new_cstr(mrb, ch);
 }

@@ -10,8 +10,9 @@ if __FILE__ == $PROGRAM_NAME
 end
 
 MRuby::Build.new do |conf|
-  toolchain :clang
+  toolchain :gcc
   conf.gembox 'default'
   conf.gem File.dirname(__FILE__)
+  conf.gem :github => 'AndrewBelt/mruby-yaml', :branch => "master" 
   conf.cc.defines = %w(ENABLE_READLINE)
 end

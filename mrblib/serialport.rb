@@ -36,7 +36,7 @@ class SerialPort
   
   RATES = [2400, 4800, 9600, 19200, 38400, 57600, 115200, 230400]
   
-  attr_reader :port_name, :baud
+  attr_reader :port_name, :baud, :error, :errno
   attr_accessor :blocking, :buffer_size, :terminator, :prompt
   
   def initialize(port, baud=9600, blocking=false, &block)
@@ -44,6 +44,7 @@ class SerialPort
     self.baud      = baud
     @blocking      = blocking
     @error         = nil
+    @errno         = nil
     @fd            = -1
     @buffer_size   = 1024
     @terminator    = "\r\n"
@@ -86,7 +87,7 @@ class SerialPort
         break if line[rng] == sep
       end
     end
-    return line
+    return line[0..-(sep.length + 1)]
   end
   
   def read_lines(buf_len = @buffer_size)
