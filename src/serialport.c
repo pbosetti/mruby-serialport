@@ -69,8 +69,8 @@ enum error_src set_blocking(int fd, int should_block) {
 
   if (tcsetattr(fd, TCSANOW, &tty) != 0)
     return TCSETADDR_ERROR;
-  else
-    return 0;
+  fcntl(fd, F_SETFL, FNDELAY);
+  return 0;
 }
 
 static void update_error(mrb_state *mrb, mrb_value self) {

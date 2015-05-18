@@ -37,7 +37,7 @@ class SerialPort
   RATES = [2400, 4800, 9600, 19200, 38400, 57600, 115200, 230400]
   
   attr_reader :port_name, :baud
-  attr_accessor :blocking, :buffer_size, :terminator
+  attr_accessor :blocking, :buffer_size, :terminator, :prompt
   
   def initialize(port, baud=9600, blocking=false, &block)
     self.port_name = port
@@ -47,6 +47,7 @@ class SerialPort
     @fd            = -1
     @buffer_size   = 1024
     @terminator    = "\r\n"
+    @prompt = ">"
     if block_given? then
       self.operate &block
     end
@@ -71,26 +72,22 @@ class SerialPort
     end
   end
   
-  def puts(string)
-    self.write(string.to_s + @terminator)
-  end
-  
   def read(buf_len = @buffer_size)
     self._read(buf_len)
   end
 
-  # Not Working (to be investigated)
-  # def readline(sep=@terminator)
-  #   line = ""
-  #   rng = (-sep.length)..(-1)
-  #   loop do
-  #     c = self.read_char
-  #     break unless c
-  #     line << c
-  #     break if line[rng] == sep
-  #   end
-  #   return line
-  # end
+  def scan_upto(sep=@prompt)
+    line = ""
+    rng = (-sep.length)..(-1)
+    loop do
+      c = self.read_char
+      if c then
+        line << c[0]
+        break if line[rng] == sep
+      end
+    end
+    return line
+  end
   
   def read_lines(buf_len = @buffer_size)
     (self.read(buf_len) || '').split(@terminator)
@@ -100,6 +97,19 @@ class SerialPort
     self._write(str.to_s)
   end
   
+  def puts(string)
+    self.write(string.to_s + @terminator)
+  end
+  
+  def command(cmd, prompt=@prompt)
+    raise ArgumentError, "Need a block" unless block_given?
+    self.write cmd
+    while self.available == 0 do 
+      # no op
+    end
+    yield self.scan_upto prompt
+  end
+    
   def operate(&block)
     self.open if @fd < 0
     yield self
