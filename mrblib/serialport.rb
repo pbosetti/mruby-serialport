@@ -117,4 +117,9 @@ class SerialPort
     self.close
   end
   
+  def dtr_toggle
+    self.dtr 1
+    self.dtr 0
+  end
+  
 end

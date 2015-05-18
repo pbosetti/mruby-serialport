@@ -216,6 +216,28 @@ mrb_value mrb_serialport_available(mrb_state *mrb, mrb_value self) {
   return mrb_fixnum_value(bytes_available);
 }
 
+mrb_value mrb_toggle_dtr(mrb_state *mrb, mrb_value self) {
+  int fd = mrb_fixnum(IV_GET("@fd"));
+  int val = 0, res = 0;
+  int status = 0;
+  mrb_get_args(mrb, "i", &val);
+  if (val == 0) {
+    res = ioctl(fd, TIOCCDTR, NULL);
+  }
+  else if (val == 1) {
+    res = ioctl(fd, TIOCSDTR, NULL);
+  }
+  else {
+    ioctl(fd, TIOCMGET, &status);
+    return mrb_fixnum_value(status);  
+  }
+  if (res != 0) {
+    update_error(mrb, self);
+    mrb_raise(mrb, E_RUNTIME_ERROR, strerror(errno));
+  }
+  return mrb_true_value();
+}
+
 void mrb_mruby_serialport_gem_init(mrb_state *mrb) {
   struct RClass *serialport_class;
   serialport_class = mrb_define_class(mrb, "SerialPort", mrb->object_class);
@@ -227,6 +249,7 @@ void mrb_mruby_serialport_gem_init(mrb_state *mrb) {
   mrb_define_method(mrb, serialport_class, "flush", mrb_serialport_flush, MRB_ARGS_NONE());
   mrb_define_method(mrb, serialport_class, "available", mrb_serialport_available, MRB_ARGS_NONE());
   mrb_define_method(mrb, serialport_class, "test_write", mrb_serialport_test_write, MRB_ARGS_REQ(1));
+  mrb_define_method(mrb, serialport_class, "dtr", mrb_toggle_dtr, MRB_ARGS_REQ(1));
 }
 
 void mrb_mruby_serialport_gem_final(mrb_state *mrb) {}
