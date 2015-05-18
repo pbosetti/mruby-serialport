@@ -222,10 +222,22 @@ mrb_value mrb_toggle_dtr(mrb_state *mrb, mrb_value self) {
   int status = 0;
   mrb_get_args(mrb, "i", &val);
   if (val == 0) {
+#ifdef TIOCCDTR 
     res = ioctl(fd, TIOCCDTR, NULL);
+#elif defined(TIOCM_DTR)
+    res = ioctl(fd, TIOCMBIC, TIOCM_DTR);
+#else
+#error Dunno how to manage DTR
+#endif
   }
   else if (val == 1) {
+#ifdef TIOCCDTR 
     res = ioctl(fd, TIOCSDTR, NULL);
+#elif defined(TIOCM_DTR)
+    res = ioctl(fd, TIOCMBIS, TIOCM_DTR);
+#else
+#error Dunno how to manage DTR
+#endif
   }
   else {
     ioctl(fd, TIOCMGET, &status);
