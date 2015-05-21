@@ -1,43 +1,11 @@
+class TimeoutError < RuntimeError; end
+
 class SerialPort
-  ERRNO_MAP = {
-     1 => :EPERM,
-     2 => :ENOENT,
-     3 => :ESRCH,
-     4 => :EINTR,
-     5 => :EIO,
-     6 => :ENXIO,
-     7 => :E2BIG,
-     8 => :ENOEXEC,
-     9 => :EBADF,
-    10 => :ECHILD,
-    11 => :EDEADLK,
-    12 => :ENOMEM,
-    13 => :EACCES,
-    14 => :EFAULT,
-    15 => :ENOTBLK,
-    16 => :EBUSY,
-    17 => :EEXIST,
-    18 => :EXDEV,
-    19 => :ENODEV,
-    20 => :ENOTDIR,
-    21 => :EISDIR,
-    22 => :EINVAL,
-    23 => :ENFILE,
-    24 => :EMFILE,
-    25 => :ENOTTY,
-    26 => :ETXTBSY,
-    27 => :EFBIG,
-    28 => :ENOSPC,
-    29 => :ESPIPE,
-    30 => :EROFS,
-    31 => :EMLINK,
-    32 => :EPIPE
-  }
-  
   RATES = [2400, 4800, 9600, 19200, 38400, 57600, 115200, 230400]
   
   attr_reader :port_name, :baud, :error, :errno
-  attr_accessor :blocking, :buffer_size, :terminator, :prompt
+  attr_accessor :blocking, :buffer_size, :terminator
+  attr_accessor :prompt, :autoflush, :timeout
   
   def initialize(port, baud=9600, blocking=false, &block)
     self.port_name = port
@@ -48,7 +16,9 @@ class SerialPort
     @fd            = -1
     @buffer_size   = 1024
     @terminator    = "\r\n"
-    @prompt = ">"
+    @prompt        = ">"
+    @autoflush     = false
+    @timeout       = 10
     if block_given? then
       self.operate &block
     end
@@ -64,15 +34,6 @@ class SerialPort
     @port_name = v
   end
   
-  def error
-    case @error
-    when Fixnum
-      ERRNO_MAP[@error]
-    when String
-      @error
-    end
-  end
-  
   def read(buf_len = @buffer_size)
     self._read(buf_len)
   end
@@ -80,7 +41,9 @@ class SerialPort
   def scan_upto(sep=@prompt)
     line = ""
     rng = (-sep.length)..(-1)
+    start = Time.now
     loop do
+      raise TimeoutError if Time.now - start > @timeout
       c = self.read_char
       if c then
         line << c[0]
@@ -102,13 +65,28 @@ class SerialPort
     self.write(string.to_s + @terminator)
   end
   
-  def command(cmd, prompt=@prompt)
-    raise ArgumentError, "Need a block" unless block_given?
-    self.write cmd
-    while self.available == 0 do 
-      # no op
+  def command(cmd, prompt=@prompt, &block)
+    case cmd
+    when String
+      self.flush if @autoflush
+      self.write cmd
+      start = Time.now
+      while self.available == 0 do
+        raise TimeoutError if Time.now - start > @timeout
+      end
+      result = self.scan_upto prompt
+      if block_given? then
+        yield result 
+      else
+        return result
+      end
+    when Array
+      results = []
+      cmd.each {|c| results << self.command(c, prompt, &block)}
+      return results
+    else
+      raise ArgumentError, "Expect a String or an Array of Strings"
     end
-    yield self.scan_upto prompt
   end
     
   def operate(&block)
